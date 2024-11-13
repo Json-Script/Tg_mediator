@@ -18,9 +18,6 @@ logger.debug(f"Chat ID (CHAT_ID): {CHAT_ID}")
 if not CHAT_ID:
     logger.error("Error: CHAT_ID is empty. Please set the CHAT_ID environment variable.")
 
-# Define the file size limit (10MB)
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
-
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
@@ -61,52 +58,52 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Failed to send message: {e}")
 
-# Function to handle media files
+# Function to handle media files (photo, video, voice)
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check that the message was sent by the owner
     if update.message.from_user.id != CHAT_ID:
         return
 
     # Extract the file type and file size
-    file_type = None
-    file_size = None
     file = None
+    file_type = None
 
-    # Check for photo
+    # Handle photo
     if update.message.photo:
         file = update.message.photo[-1].get_file()  # Get the highest resolution photo
         file_type = "photo"
-        file_size = file.file_size
+        logger.debug(f"Received photo.")
 
-    # Check for video
+    # Handle video
     elif update.message.video:
         file = update.message.video.get_file()
         file_type = "video"
-        file_size = file.file_size
+        logger.debug(f"Received video.")
 
-    # Check for voice message
+    # Handle voice message
     elif update.message.voice:
         file = update.message.voice.get_file()
         file_type = "voice"
-        file_size = file.file_size
+        logger.debug(f"Received voice message.")
 
-    # Limit file size to 10MB
-    if file and file_size <= MAX_FILE_SIZE:
-        # Send the file to the target chat
+    # Send the file to the target chat
+    if file:
         try:
-            target_id = int(context.user_data.get('target_id'))
+            target_id = int(context.user_data.get('target_id', CHAT_ID))
+
             if file_type == "photo":
                 await context.bot.send_photo(chat_id=target_id, photo=file.file_id)
+                await update.message.reply_text(f"Photo sent successfully.")
             elif file_type == "video":
                 await context.bot.send_video(chat_id=target_id, video=file.file_id)
+                await update.message.reply_text(f"Video sent successfully.")
             elif file_type == "voice":
                 await context.bot.send_voice(chat_id=target_id, voice=file.file_id)
-
-            await update.message.reply_text(f"{file_type.capitalize()} sent successfully.")
+                await update.message.reply_text(f"Voice message sent successfully.")
         except Exception as e:
             await update.message.reply_text(f"Failed to send {file_type}: {e}")
     else:
-        await update.message.reply_text("File is too large. Please send a file smaller than 10MB.")
+        await update.message.reply_text("No valid media file detected.")
 
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
