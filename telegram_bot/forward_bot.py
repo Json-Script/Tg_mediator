@@ -64,7 +64,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id != CHAT_ID:
         return
 
-    # Extract the file type and file size
+    # Extract the file type
     file = None
     file_type = None
 
@@ -86,19 +86,19 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_type = "voice"
         logger.debug(f"Received voice message.")
 
-    # Send the file to the target chat
+    # Send the file to the target chat if a valid file is received
     if file:
         try:
             target_id = int(context.user_data.get('target_id', CHAT_ID))
 
             if file_type == "photo":
-                await context.bot.send_photo(chat_id=target_id, photo=file.file_id)
+                await context.bot.send_photo(chat_id=target_id, photo=file)
                 await update.message.reply_text(f"Photo sent successfully.")
             elif file_type == "video":
-                await context.bot.send_video(chat_id=target_id, video=file.file_id)
+                await context.bot.send_video(chat_id=target_id, video=file)
                 await update.message.reply_text(f"Video sent successfully.")
             elif file_type == "voice":
-                await context.bot.send_voice(chat_id=target_id, voice=file.file_id)
+                await context.bot.send_voice(chat_id=target_id, voice=file)
                 await update.message.reply_text(f"Voice message sent successfully.")
         except Exception as e:
             await update.message.reply_text(f"Failed to send {file_type}: {e}")
