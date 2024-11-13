@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
 # Set up logging for debugging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -21,50 +21,14 @@ if not CHAT_ID:
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
-# Define message handler
-async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
-
-    # Skip forwarding if the message is from the owner's chat ID
-    if user_id == CHAT_ID:
-        logger.debug("Message from owner's chat ID. Skipping forwarding.")
-        return
-
-    # Send message with username and ID of the sender
-    await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
-    await update.message.reply_text("Your message has been sent to the owner.")
-
-# Command handler for /send
-async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Only allow the command for the owner
-    if update.message.from_user.id != CHAT_ID:
-        await update.message.reply_text("You are not authorized to use this command.")
-        return
-
-    # Parse command arguments
-    try:
-        target_id = int(context.args[0])  # Ensure the target ID is an integer
-        message = " ".join(context.args[1:]) if len(context.args) > 1 else None
-
-        # Send the text message if provided
-        if message:
-            await context.bot.send_message(chat_id=target_id, text=message)
-            await update.message.reply_text("Text message sent successfully.")
-
-    except (IndexError, ValueError):
-        await update.message.reply_text("Invalid format. Use /send <number_id> <message> or send media files.")
-    except Exception as e:
-        await update.message.reply_text(f"Failed to send message: {e}")
-
 # Function to handle media files (photo, video, voice)
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Check that the message was sent by the owner
+    # Check that the message was sent by the owner (CHAT_ID)
     if update.message.from_user.id != CHAT_ID:
+        logger.debug("Message from unauthorized user, ignoring.")
         return
 
-    # Extract the file type
+    # Extract the file type and handle appropriately
     file = None
     file_type = None
 
@@ -72,42 +36,39 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.photo:
         file = update.message.photo[-1].get_file()  # Get the highest resolution photo
         file_type = "photo"
-        logger.debug(f"Received photo.")
+        logger.debug(f"Received photo with file_id: {file.file_id}")
 
     # Handle video
     elif update.message.video:
         file = update.message.video.get_file()
         file_type = "video"
-        logger.debug(f"Received video.")
+        logger.debug(f"Received video with file_id: {file.file_id}")
 
     # Handle voice message
     elif update.message.voice:
         file = update.message.voice.get_file()
         file_type = "voice"
-        logger.debug(f"Received voice message.")
+        logger.debug(f"Received voice message with file_id: {file.file_id}")
 
     # Send the file to the target chat if a valid file is received
     if file:
         try:
-            target_id = int(context.user_data.get('target_id', CHAT_ID))
-
+            # Send the file to the CHAT_ID (your user ID)
             if file_type == "photo":
-                await context.bot.send_photo(chat_id=target_id, photo=file)
-                await update.message.reply_text(f"Photo sent successfully.")
+                await context.bot.send_photo(chat_id=CHAT_ID, photo=file.file_id)
+                await update.message.reply_text(f"Photo sent to {CHAT_ID}.")
             elif file_type == "video":
-                await context.bot.send_video(chat_id=target_id, video=file)
-                await update.message.reply_text(f"Video sent successfully.")
+                await context.bot.send_video(chat_id=CHAT_ID, video=file.file_id)
+                await update.message.reply_text(f"Video sent to {CHAT_ID}.")
             elif file_type == "voice":
-                await context.bot.send_voice(chat_id=target_id, voice=file)
-                await update.message.reply_text(f"Voice message sent successfully.")
+                await context.bot.send_voice(chat_id=CHAT_ID, voice=file.file_id)
+                await update.message.reply_text(f"Voice message sent to {CHAT_ID}.")
         except Exception as e:
             await update.message.reply_text(f"Failed to send {file_type}: {e}")
     else:
         await update.message.reply_text("No valid media file detected.")
 
-# Add handlers
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-app.add_handler(CommandHandler("send", send_command))
+# Add media handler
 app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.VOICE, handle_media))
 
 # Start polling
