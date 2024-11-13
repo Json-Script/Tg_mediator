@@ -1,7 +1,7 @@
 name: Deploy Telegram Bot
 
 on:
-workflow_dispatch
+  workflow_dispatch
   push:
     branches:
       - main  # Adjust to your desired branch
