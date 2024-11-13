@@ -2,7 +2,6 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
-from telegram.constants import MAX_FILESIZE_DOWNLOAD
 
 # Set up logging for debugging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -18,6 +17,9 @@ logger.debug(f"Chat ID (CHAT_ID): {CHAT_ID}")
 
 if not CHAT_ID:
     logger.error("Error: CHAT_ID is empty. Please set the CHAT_ID environment variable.")
+
+# Define the file size limit (10MB)
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
 
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
@@ -89,7 +91,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_size = file.file_size
 
     # Limit file size to 10MB
-    if file and file_size <= 10 * 1024 * 1024:
+    if file and file_size <= MAX_FILE_SIZE:
         # Send the file to the target chat
         try:
             target_id = int(context.user_data.get('target_id'))
