@@ -1,14 +1,14 @@
-name: forward
+name: Deploy Telegram Bot
 
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - main  # Change this to the branch you want to deploy from
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -16,16 +16,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install python-telegram-bot==20.0
+          pip install -r requirements.txt
 
-      - name: Run the bot
-        run: |
-          python telegram_bot/forward_bot.py
+      - name: Run the Telegram Bot
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          MY_CHAT_ID: ${{ secrets.CHAT_ID }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          python telegram_bot/forward_bot.py
