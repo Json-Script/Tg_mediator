@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes, ConversationHandler
+from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
 
 # Set up logging for debugging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -21,9 +21,6 @@ if not CHAT_ID:
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
-# Conversation states for /send command
-ASK_TARGET_ID, ASK_MESSAGE = range(2)
-
 # Define message handler
 async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
@@ -39,52 +36,32 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
     await update.message.reply_text("Your message has been sent to the owner.")
 
-# Start the /send command
+# Command handler for /send
 async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only allow the command for the owner
     if update.message.from_user.id != CHAT_ID:
         await update.message.reply_text("You are not authorized to use this command.")
-        return ConversationHandler.END
+        return
 
-    await update.message.reply_text("Please send me the contact ID to deliver the message to:")
-    return ASK_TARGET_ID
-
-# Handle target ID input
-async def ask_target_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['target_id'] = update.message.text
-    await update.message.reply_text("Send me the message you want to deliver:")
-    return ASK_MESSAGE
-
-# Handle message input for target ID
-async def ask_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    target_id = context.user_data['target_id']
-    message = update.message.text
+    # Parse command arguments
     try:
+        target_id = context.args[0]
+        message = " ".join(context.args[1:])
+        
+        # Ensure the target ID is an integer
+        target_id = int(target_id)
+
+        # Send the message to the specified target ID
         await context.bot.send_message(chat_id=target_id, text=message)
         await update.message.reply_text("Message sent successfully.")
+    except (IndexError, ValueError):
+        await update.message.reply_text("Invalid format. Use /send <number_id> <message>.")
     except Exception as e:
         await update.message.reply_text(f"Failed to send message: {e}")
-    return ConversationHandler.END
-
-# Cancel command handler
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Command cancelled.")
-    return ConversationHandler.END
 
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-
-# Set up conversation handler for /send command
-send_conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("send", send_command)],
-    states={
-        ASK_TARGET_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_target_id)],
-        ASK_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_message)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel)]
-)
-
-app.add_handler(send_conv_handler)
+app.add_handler(CommandHandler("send", send_command))
 
 # Start polling
 app.run_polling()
