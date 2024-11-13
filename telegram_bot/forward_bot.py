@@ -2,6 +2,7 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
+from telegram.constants import MAX_FILESIZE_DOWNLOAD
 
 # Set up logging for debugging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -45,23 +46,70 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Parse command arguments
     try:
-        target_id = context.args[0]
-        message = " ".join(context.args[1:])
-        
-        # Ensure the target ID is an integer
-        target_id = int(target_id)
+        target_id = int(context.args[0])  # Ensure the target ID is an integer
+        message = " ".join(context.args[1:]) if len(context.args) > 1 else None
 
-        # Send the message to the specified target ID
-        await context.bot.send_message(chat_id=target_id, text=message)
-        await update.message.reply_text("Message sent successfully.")
+        # Send the text message if provided
+        if message:
+            await context.bot.send_message(chat_id=target_id, text=message)
+            await update.message.reply_text("Text message sent successfully.")
+
     except (IndexError, ValueError):
-        await update.message.reply_text("Invalid format. Use /send <number_id> <message>.")
+        await update.message.reply_text("Invalid format. Use /send <number_id> <message> or send media files.")
     except Exception as e:
         await update.message.reply_text(f"Failed to send message: {e}")
+
+# Function to handle media files
+async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check that the message was sent by the owner
+    if update.message.from_user.id != CHAT_ID:
+        return
+
+    # Extract the file type and file size
+    file_type = None
+    file_size = None
+    file = None
+
+    # Check for photo
+    if update.message.photo:
+        file = update.message.photo[-1].get_file()  # Get the highest resolution photo
+        file_type = "photo"
+        file_size = file.file_size
+
+    # Check for video
+    elif update.message.video:
+        file = update.message.video.get_file()
+        file_type = "video"
+        file_size = file.file_size
+
+    # Check for voice message
+    elif update.message.voice:
+        file = update.message.voice.get_file()
+        file_type = "voice"
+        file_size = file.file_size
+
+    # Limit file size to 10MB
+    if file and file_size <= 10 * 1024 * 1024:
+        # Send the file to the target chat
+        try:
+            target_id = int(context.user_data.get('target_id'))
+            if file_type == "photo":
+                await context.bot.send_photo(chat_id=target_id, photo=file.file_id)
+            elif file_type == "video":
+                await context.bot.send_video(chat_id=target_id, video=file.file_id)
+            elif file_type == "voice":
+                await context.bot.send_voice(chat_id=target_id, voice=file.file_id)
+
+            await update.message.reply_text(f"{file_type.capitalize()} sent successfully.")
+        except Exception as e:
+            await update.message.reply_text(f"Failed to send {file_type}: {e}")
+    else:
+        await update.message.reply_text("File is too large. Please send a file smaller than 10MB.")
 
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 app.add_handler(CommandHandler("send", send_command))
+app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.VOICE, handle_media))
 
 # Start polling
 app.run_polling()
