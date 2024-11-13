@@ -30,6 +30,11 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     username = update.message.from_user.username
 
+    # Skip forwarding if the message is from the owner's chat ID
+    if user_id == CHAT_ID:
+        logger.debug("Message from owner's chat ID. Skipping forwarding.")
+        return
+
     # Send message with username and ID of the sender
     await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
     await update.message.reply_text("Your message has been sent to the owner.")
