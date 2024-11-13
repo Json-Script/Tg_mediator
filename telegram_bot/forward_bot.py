@@ -1,29 +1,34 @@
 import os
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
 import logging
+from telegram import Update
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-# Set up logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+# Set up logging for debugging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Define the bot and owner ID from environment variables
-BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")  # Your bot's token
-OWNER_ID = os.getenv("CHAT_ID")  # Your personal chat ID
+# Get environment variables
+BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
+CHAT_ID = os.getenv('CHAT_ID')
 
-# Create the bot instance
+# Log the environment variables for debugging
+logger.debug(f"Telegram Token: {BOT_TOKEN}")
+logger.debug(f"Chat ID (CHAT_ID): {CHAT_ID}")
+
+if not CHAT_ID:
+    logger.error("Error: CHAT_ID is empty. Please set the CHAT_ID environment variable.")
+
+# Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
-# Define message handler function
+# Define message handler
 async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    # Send the user's message to the owner (your personal chat)
-    await context.bot.send_message(chat_id=OWNER_ID, text=f"**{user_message}** /// Message from @{update.message.from_user.username}")
-    # Acknowledge the user that their message was sent
+    await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {update.message.from_user.username}: {user_message}")
     await update.message.reply_text("Your message has been sent to the owner.")
 
-# Add a message handler
+# Add the handler to the app
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 
-# Start the bot
+# Start polling
 app.run_polling()
