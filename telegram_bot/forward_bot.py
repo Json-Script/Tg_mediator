@@ -35,7 +35,8 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send message with username and ID of the sender
     await context.bot.send_message(
         chat_id=CHAT_ID, 
-        text=f"Message from {username} (ID: {user_id}): {user_message}"
+        text=f"@{username} ID: {user_id}\n\n"
+             f"{user_message}"
     )
     await update.message.reply_text(
         "Thank you for your message. It has been successfully forwarded to the owner."
