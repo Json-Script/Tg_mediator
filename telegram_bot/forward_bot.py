@@ -18,7 +18,7 @@ logger.debug(f"Chat ID (CHAT_ID): {CHAT_ID}")
 if not CHAT_ID:
     logger.error("Error: CHAT_ID is empty. Please set the CHAT_ID environment variable.")
 
-# Store message history for each user
+# Store message history for all users
 user_message_history = {}
 
 # Create the bot application
@@ -38,7 +38,7 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Store the message in the history for the user
     if user_id not in user_message_history:
         user_message_history[user_id] = []
-    user_message_history[user_id].append(user_message)
+    user_message_history[user_id].append(f"{username} (ID: {user_id}): {user_message}")
 
     # Send message with username and ID of the sender
     await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
@@ -74,26 +74,23 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("You are not authorized to use this command.")
         return
 
-    # Parse command arguments to get the target user ID
-    try:
-        target_id = int(context.args[0])
-        history = user_message_history.get(target_id, [])
+    # Compile the entire chat history from all users
+    history_text = ""
+    for user_id, messages in user_message_history.items():
+        history_text += f"Messages from user {user_id}:\n" + "\n".join(messages) + "\n\n"
 
-        # Format the history for display
-        if history:
-            history_text = "\n".join(history)
-            await update.message.reply_text(f"Message history for user {target_id}:\n{history_text}")
-        else:
-            await update.message.reply_text(f"No message history found for user {target_id}.")
-    except (IndexError, ValueError):
-        await update.message.reply_text("Invalid format. Use /history <person_id>.")
+    # Send history or indicate no history if it's empty
+    if history_text:
+        await update.message.reply_text(f"Complete chat history:\n{history_text}")
+    else:
+        await update.message.reply_text("No chat history available.")
 
 # Command handler for /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "Here are the available commands:\n"
         "/send <number_id> <message> - Send a message to the specified user ID.\n"
-        "/history <person_id> - View the message history of the specified user ID.\n"
+        "/history - View the complete chat history of all users (owner only).\n"
         "/help - Display this help message."
     )
     await update.message.reply_text(help_text)
