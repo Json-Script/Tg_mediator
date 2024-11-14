@@ -24,9 +24,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-telegram-bot==20.0  # Install the required dependencies directly
 
-      - name: Run the Telegram Bot
+      - name: Run the Telegram Bot with restart every 50 minutes
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          python telegram_bot/forward_bot.py
+          while true; do
+            echo "Starting Telegram bot..."
+            python telegram_bot/forward_bot.py &
+            BOT_PID=$!
+            sleep 3000  # Wait 50 minutes (3000 seconds)
+            echo "Restarting Telegram bot..."
+            kill $BOT_PID
+          done
