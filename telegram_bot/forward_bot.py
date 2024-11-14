@@ -1,3 +1,4 @@
+
 import os
 import logging
 from telegram import Update
@@ -30,6 +31,9 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone_number = update.message.contact.phone_number if update.message.contact else "No phone number provided"
     date_sent = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Debug: Log the incoming message
+    logger.debug(f"Received message from user: {username} (ID: {user_id})")
+
     # Skip forwarding if the message is from the owner's chat ID
     if user_id == CHAT_ID:
         logger.debug("Message from owner's chat ID. Skipping forwarding.")
@@ -44,9 +48,16 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Date: {date_sent}"
     )
 
-    # Send the message to the owner's chat ID with Markdown
-    await context.bot.send_message(chat_id=CHAT_ID, text=message_to_owner, parse_mode="MarkdownV2")
-    await update.message.reply_text("Your message has been sent to the owner.")
+    # Debug: Log the message being forwarded
+    logger.debug(f"Forwarding message to owner: {message_to_owner}")
+
+    try:
+        # Send the message to the owner's chat ID with Markdown
+        await context.bot.send_message(chat_id=CHAT_ID, text=message_to_owner, parse_mode="MarkdownV2")
+        await update.message.reply_text("Your message has been sent to the owner.")
+    except Exception as e:
+        logger.error(f"Error forwarding message: {e}")
+        await update.message.reply_text("There was an issue forwarding your message. Please try again later.")
 
 # Command handler for /send
 async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
