@@ -35,16 +35,17 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.debug("Message from owner's chat ID. Skipping forwarding.")
         return
 
-    # Send message with each piece of information on a new line
+    # Format message as a quote
     message_to_owner = (
-        f"```\n"
-        f"{user_message}```\n"
+        f"> {user_message}\n\n"
         f"User ID: {user_id}\n"
         f"Username: @{username}\n"
         f"Phone Number: {phone_number}\n"
         f"Date: {date_sent}"
     )
-    await context.bot.send_message(chat_id=CHAT_ID, text=message_to_owner)
+
+    # Send the message to the owner's chat ID with Markdown
+    await context.bot.send_message(chat_id=CHAT_ID, text=message_to_owner, parse_mode="MarkdownV2")
     await update.message.reply_text("Your message has been sent to the owner.")
 
 # Command handler for /send
