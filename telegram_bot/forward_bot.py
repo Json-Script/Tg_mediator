@@ -2,6 +2,7 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
+from datetime import datetime
 
 # Set up logging for debugging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -26,17 +27,23 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     user_id = update.message.from_user.id
     username = update.message.from_user.username
+    phone_number = update.message.contact.phone_number if update.message.contact else "No phone number provided"
+    date_sent = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Skip forwarding if the message is from the owner's chat ID
     if user_id == CHAT_ID:
         logger.debug("Message from owner's chat ID. Skipping forwarding.")
         return
 
-    # Send message with user's message first, then username and ID of the sender
-    await context.bot.send_message(
-        chat_id=CHAT_ID,
-        text=f"{user_message}\n\nFrom: {username} (ID: {user_id})"
+    # Send message with each piece of information on a new line
+    message_to_owner = (
+        f"User ID: {user_id}\n"
+        f"Username: @{username}\n"
+        f"Phone Number: {phone_number}\n"
+        f"Date: {date_sent}\n"
+        f"Additional Information:\n{user_message}"
     )
+    await context.bot.send_message(chat_id=CHAT_ID, text=message_to_owner)
     await update.message.reply_text("Your message has been sent to the owner.")
 
 # Command handler for /send
