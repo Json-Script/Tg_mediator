@@ -1,7 +1,5 @@
 import os
 import logging
-from datetime import datetime
-import subprocess  # To get the Git commit hash
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
 
@@ -12,17 +10,6 @@ logger = logging.getLogger(__name__)
 # Get environment variables
 BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = int(os.getenv('CHAT_ID'))  # Ensure CHAT_ID is an integer
-
-# Get the current git commit hash
-def get_git_commit():
-    try:
-        commit_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
-    except Exception as e:
-        logger.error(f"Could not get git commit hash: {e}")
-        commit_hash = "Unknown"
-    return commit_hash
-
-COMMIT_HASH = get_git_commit()
 
 # Log the environment variables for debugging
 logger.debug(f"Telegram Token: {BOT_TOKEN}")
@@ -39,29 +26,59 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     user_id = update.message.from_user.id
     username = update.message.from_user.username
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    load_time = round(context.application.startup_duration, 2) if context.application.startup_duration else "N/A"
 
     # Skip forwarding if the message is from the owner's chat ID
     if user_id == CHAT_ID:
         logger.debug("Message from owner's chat ID. Skipping forwarding.")
         return
 
-    # Construct the forwarded message
-    forwarded_text = (
-        f"{user_message}\n\n\n"
-        f"User: @{username} (ID: {user_id})\n"
-        f"Sent on: {timestamp}\n"
-        f"Commit Hash: {COMMIT_HASH}\n"
-        f"Load Time: {load_time} seconds"
-    )
-
-    # Send the constructed message to the owner
-    await context.bot.send_message(chat_id=CHAT_ID, text=forwarded_text)
+    # Send message with username and ID of the sender
+    await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
     await update.message.reply_text("Your message has been sent to the owner.")
 
-# Other handler functions remain the same
-# (send_command, help_command, start_command)
+# Command handler for /send
+async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Only allow the command for the owner
+    if update.message.from_user.id != CHAT_ID:
+        await update.message.reply_text("You are not authorized to use this command.")
+        return
+
+    # Parse command arguments
+    try:
+        target_id = context.args[0]
+        message = " ".join(context.args[1:])
+
+        # Ensure the target ID is an integer
+        target_id = int(target_id)
+
+        # Send the message to the specified target ID
+        await context.bot.send_message(chat_id=target_id, text=message)
+        await update.message.reply_text("Message sent successfully.")
+    except (IndexError, ValueError):
+        await update.message.reply_text("Invalid format. Use /send <number_id> <message>.")
+    except Exception as e:
+        await update.message.reply_text(f"Failed to send message: {e}")
+
+# Command handler for /help
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = (
+        "Here’s how you can interact with the bot:\n\n"
+        "for sending your massage to the owner just write it and send it without commands. \n\n"
+        "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
+        "\n"
+        "/help - Displays this help message\n\n"
+        "For any issues or questions, feel free to reach out!"
+    )
+    await update.message.reply_text(help_text)
+
+# Command handler for /start
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    start_text = (
+        "Hello and welcome! 🫂\n\n"
+        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner. \n\n"
+        "How can I assist you today? You can type /help to see the available commands."
+    )
+    await update.message.reply_text(start_text)
 
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
