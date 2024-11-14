@@ -21,6 +21,9 @@ if not CHAT_ID:
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
+# Store media to be forwarded and the target user ID
+pending_media = {}
+
 # Define message handler for text messages
 async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
@@ -131,6 +134,60 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(start_text)
 
+# Define handler for media sent by the owner
+async def handle_owner_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id != CHAT_ID:
+        return  # Ignore if not the owner
+
+    if update.message.photo:
+        media_type = "photo"
+        media = update.message.photo[-1]
+    elif update.message.video:
+        media_type = "video"
+        media = update.message.video
+    else:
+        return  # Only handle photos and videos
+
+    # Prompt the owner for a user ID to send the media
+    pending_media[user_id] = {
+        "media_type": media_type,
+        "media": media,
+        "awaiting_user_id": True  # Flag indicating we are awaiting a user ID
+    }
+
+    await update.message.reply_text(
+        "Please provide the user ID of the person you want to send this media to."
+    )
+
+# Define handler for user ID input from the owner
+async def handle_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id != CHAT_ID:
+        return  # Ignore if not the owner
+
+    if user_id not in pending_media:
+        return  # No media waiting to be sent
+
+    # Extract the user ID for the target recipient
+    try:
+        target_user_id = int(update.message.text)
+    except ValueError:
+        await update.message.reply_text("Invalid user ID. Please enter a valid integer ID.")
+        return
+
+    media_info = pending_media[user_id]
+    media_type = media_info["media_type"]
+    media = media_info["media"]
+    
+    if media_type == "photo":
+        await context.bot.send_photo(chat_id=target_user_id, photo=media.file_id)
+    elif media_type == "video":
+        await context.bot.send_video(chat_id=target_user_id, video=media.file_id)
+
+    await update.message.reply_text(f"Media has been sent to user ID {target_user_id}.")
+    del pending_media[user_id]  # Clear the pending media entry
+
 # Add handlers for text, photos, and videos
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 app.add_handler(MessageHandler(filters.PHOTO, forward_photo))
@@ -138,6 +195,8 @@ app.add_handler(MessageHandler(filters.VIDEO, forward_video))
 app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CommandHandler("start", start_command))
+app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO, handle_owner_media))
+app.add_handler(MessageHandler(filters.TEXT, handle_user_id))
 
 # Start polling
 app.run_polling()
