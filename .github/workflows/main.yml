@@ -35,5 +35,6 @@ jobs:
             BOT_PID=$!
             sleep 3000  # Wait 50 minutes (3000 seconds)
             echo "Restarting Telegram bot..."
-            kill $BOT_PID
+            kill $BOT_PID  # Terminate the current bot process
+            wait $BOT_PID  # Ensure the process finishes cleanly before restarting
           done
