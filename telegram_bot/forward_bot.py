@@ -37,11 +37,11 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send message with each piece of information on a new line
     message_to_owner = (
+        f"{user_message}\n"
         f"User ID: {user_id}\n"
         f"Username: @{username}\n"
         f"Phone Number: {phone_number}\n"
-        f"Date: {date_sent}\n"
-        f"Additional Information:\n{user_message}"
+        f"Date: {date_sent}"
     )
     await context.bot.send_message(chat_id=CHAT_ID, text=message_to_owner)
     await update.message.reply_text("Your message has been sent to the owner.")
