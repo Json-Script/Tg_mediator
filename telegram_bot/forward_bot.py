@@ -1,3 +1,4 @@
+
 import os
 import logging
 from telegram import Update
@@ -77,7 +78,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_text = (
         "Hello and welcome! 👋\n\n"
-        "I’m your friendly bot. How can I assist you today? You can type /help to see the available commands."
+        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner. \n"
+        "How can I assist you today? You can type /help to see the available commands."
     )
     await update.message.reply_text(start_text)
 
