@@ -37,7 +37,9 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=CHAT_ID, 
         text=f"Message from {username} (ID: {user_id}): {user_message}"
     )
-    await update.message.reply_text("Your message has been sent to the owner.")
+    await update.message.reply_text(
+        "Thank you for your message. It has been successfully forwarded to the owner."
+    )
 
 # Define handler for photos
 async def forward_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,7 +58,9 @@ async def forward_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=photo.file_id, 
         caption=f"Photo from {username} (ID: {user_id})"
     )
-    await update.message.reply_text("Your photo has been sent to the owner.")
+    await update.message.reply_text(
+        "Your photo has been successfully sent to the owner. Thank you for sharing."
+    )
 
 # Define handler for videos
 async def forward_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -75,13 +79,17 @@ async def forward_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         video=video.file_id, 
         caption=f"Video from {username} (ID: {user_id})"
     )
-    await update.message.reply_text("Your video has been sent to the owner.")
+    await update.message.reply_text(
+        "Your video has been successfully sent to the owner. Thank you for your submission."
+    )
 
 # Command handler for /send
 async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only allow the command for the owner
     if update.message.from_user.id != CHAT_ID:
-        await update.message.reply_text("You are not authorized to use this command.")
+        await update.message.reply_text(
+            "I’m afraid you do not have permission to use this command. Please contact the owner for assistance."
+        )
         return
 
     # Parse command arguments
@@ -94,30 +102,32 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Send the message to the specified target ID
         await context.bot.send_message(chat_id=target_id, text=message)
-        await update.message.reply_text("Message sent successfully.")
+        await update.message.reply_text("Your message has been successfully sent.")
     except (IndexError, ValueError):
-        await update.message.reply_text("Invalid format. Use /send <number_id> <message>.")
+        await update.message.reply_text(
+            "It seems there was an issue with the format. Please use /send <number_id> <message>."
+        )
     except Exception as e:
-        await update.message.reply_text(f"Failed to send message: {e}")
+        await update.message.reply_text(f"Something went wrong: {e}. Please try again later.")
 
 # Command handler for /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
-        "Here’s how you can interact with the bot:\n\n"
-        "For sending your message to the owner, just write it and send it without commands.\n\n"
-        "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
-        "/help - Displays this help message\n\n"
-        "For any issues or questions, feel free to reach out!"
+        "Hello! Here’s how you can interact with me:\n\n"
+        "• To send a message to the owner, simply write it and send it, no commands necessary.\n\n"
+        "• /send <number_id> <message> – Sends a message to a specific user (Owner Only)\n"
+        "• /help – Displays this helpful guide\n\n"
+        "If you have any questions, don’t hesitate to reach out. I’m here to assist you!"
     )
     await update.message.reply_text(help_text)
 
 # Command handler for /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_text = (
-        "Hello and welcome! 🫂\n\n"
-        "I’m your forwarder bot. I am the intermediary between you and the senior manager. "
-        "I will personally forward your messages to the owner.\n\n"
-        "How can I assist you today? You can type /help to see the available commands."
+        "Welcome! 🌟\n\n"
+        "I’m your assistant bot, here to relay your messages to the senior manager. "
+        "Feel free to send me a message, and I'll make sure it reaches the owner promptly.\n\n"
+        "If you're unsure about something, type /help to learn how to use the available features."
     )
     await update.message.reply_text(start_text)
 
