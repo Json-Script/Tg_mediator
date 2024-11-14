@@ -64,7 +64,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "Here’s how you can interact with the bot:\n\n"
         "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
-        "  - **Who can use this?**: Only the owner (Chat ID: {CHAT_ID}) can use this command.\n"
+        "  - **Who can use this?**: Only the owner can use this command.\n"
         "\n"
         "/help - Displays this help message\n"
         "  - **Who can use this?**: Anyone can use this command to learn about available commands.\n"
@@ -76,8 +76,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Command handler for /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_text = (
-        "Hello and welcome! 👋\n\n"
-        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner. \n"
+        "Hello and welcome! 🫂\n\n"
+        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner. \n\n"
         "How can I assist you today? You can type /help to see the available commands."
     )
     await update.message.reply_text(start_text)
