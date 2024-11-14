@@ -4,7 +4,6 @@ import logging
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes, CallbackQueryHandler
-import signal
 
 # Set up logging for debugging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -167,16 +166,15 @@ app.add_handler(CommandHandler("history", history_command))
 app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CallbackQueryHandler(button_callback))
 
+# Start polling
+async def on_shutdown():
+    await app.bot.send_message(CHAT_ID, "Bot turned off...")
+
 # Notify that the bot is turned on
 async def notify_turn_on():
     await app.bot.send_message(CHAT_ID, "Bot turned on...")
 
-# Start polling
-app.run_polling(on_shutdown=notify_turn_on)
+app.run_polling(on_shutdown=on_shutdown)
 
-# Notify that the bot is turned off
-def notify_turn_off(signum, frame):
-    app.bot.send_message(CHAT_ID, "Bot turned off...")
-
-# Set up shutdown handler (for bot shutdown notifications)
-signal.signal(signal.SIGTERM, notify_turn_off)
+# Notify on shutdown
+notify_turn_on()
