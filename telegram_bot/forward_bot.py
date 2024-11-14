@@ -33,7 +33,10 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Send message with username and ID of the sender
-    await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
+    await context.bot.send_message(
+        chat_id=CHAT_ID, 
+        text=f"Message from {username} (ID: {user_id}): {user_message}"
+    )
     await update.message.reply_text("Your message has been sent to the owner.")
 
 # Define handler for photos
@@ -48,7 +51,11 @@ async def forward_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Forward photo to the owner
     photo = update.message.photo[-1]  # Get the highest quality photo
-    await context.bot.send_photo(chat_id=CHAT_ID, photo=photo.file_id, caption=f"Photo from {username} (ID: {user_id})")
+    await context.bot.send_photo(
+        chat_id=CHAT_ID, 
+        photo=photo.file_id, 
+        caption=f"Photo from {username} (ID: {user_id})"
+    )
     await update.message.reply_text("Your photo has been sent to the owner.")
 
 # Define handler for videos
@@ -63,7 +70,11 @@ async def forward_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Forward video to the owner
     video = update.message.video
-    await context.bot.send_video(chat_id=CHAT_ID, video=video.file_id, caption=f"Video from {username} (ID: {user_id})")
+    await context.bot.send_video(
+        chat_id=CHAT_ID, 
+        video=video.file_id, 
+        caption=f"Video from {username} (ID: {user_id})"
+    )
     await update.message.reply_text("Your video has been sent to the owner.")
 
 # Command handler for /send
@@ -93,7 +104,7 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "Here’s how you can interact with the bot:\n\n"
-        "for sending your message to the owner just write it and send it without commands.\n\n"
+        "For sending your message to the owner, just write it and send it without commands.\n\n"
         "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
         "/help - Displays this help message\n\n"
         "For any issues or questions, feel free to reach out!"
@@ -104,7 +115,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_text = (
         "Hello and welcome! 🫂\n\n"
-        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner.\n\n"
+        "I’m your forwarder bot. I am the intermediary between you and the senior manager. "
+        "I will personally forward your messages to the owner.\n\n"
         "How can I assist you today? You can type /help to see the available commands."
     )
     await update.message.reply_text(start_text)
