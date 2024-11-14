@@ -21,6 +21,21 @@ if not CHAT_ID:
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
+# Define the path for storing user IDs
+USER_LIST_FILE = "users_list.txt"
+
+# Load user IDs from the file if it exists, otherwise create an empty list
+def load_user_ids():
+    if os.path.exists(USER_LIST_FILE):
+        with open(USER_LIST_FILE, "r") as f:
+            return [int(line.strip()) for line in f.readlines()]
+    return []
+
+# Save a new user ID to the list file
+def save_user_id(user_id):
+    with open(USER_LIST_FILE, "a") as f:
+        f.write(f"{user_id}\n")
+
 # Define message handler for text messages
 async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
@@ -36,72 +51,41 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
     await update.message.reply_text("Your message has been sent to the owner.")
 
-# Define handler for photos
-async def forward_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
-
-    # Skip forwarding if the message is from the owner's chat ID
-    if user_id == CHAT_ID:
-        logger.debug("Message from owner's chat ID. Skipping forwarding.")
-        return
-
-    # Forward photo to the owner
-    photo = update.message.photo[-1]  # Get the highest quality photo
-    await context.bot.send_photo(chat_id=CHAT_ID, photo=photo.file_id, caption=f"Photo from {username} (ID: {user_id})")
-    await update.message.reply_text("Your photo has been sent to the owner.")
-
-# Define handler for videos
-async def forward_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
-
-    # Skip forwarding if the message is from the owner's chat ID
-    if user_id == CHAT_ID:
-        logger.debug("Message from owner's chat ID. Skipping forwarding.")
-        return
-
-    # Forward video to the owner
-    video = update.message.video
-    await context.bot.send_video(chat_id=CHAT_ID, video=video.file_id, caption=f"Video from {username} (ID: {user_id})")
-    await update.message.reply_text("Your video has been sent to the owner.")
-
-# Command handler for /send
-async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Define handler for the /all command
+async def all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only allow the command for the owner
     if update.message.from_user.id != CHAT_ID:
         await update.message.reply_text("You are not authorized to use this command.")
         return
 
-    # Parse command arguments
-    try:
-        target_id = context.args[0]
-        message = " ".join(context.args[1:])
+    # Get the message to send to all users
+    message = " ".join(context.args)
 
-        # Ensure the target ID is an integer
-        target_id = int(target_id)
+    if not message:
+        await update.message.reply_text("Please provide a message to send to all users.")
+        return
 
-        # Send the message to the specified target ID
-        await context.bot.send_message(chat_id=target_id, text=message)
-        await update.message.reply_text("Message sent successfully.")
-    except (IndexError, ValueError):
-        await update.message.reply_text("Invalid format. Use /send <number_id> <message>.")
-    except Exception as e:
-        await update.message.reply_text(f"Failed to send message: {e}")
+    # Load user IDs and send the message to all users
+    user_ids = load_user_ids()
+    for user_id in user_ids:
+        try:
+            await context.bot.send_message(chat_id=user_id, text=message)
+        except Exception as e:
+            logger.error(f"Failed to send message to {user_id}: {e}")
 
-# Command handler for /help
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = (
-        "Here’s how you can interact with the bot:\n\n"
-        "for sending your message to the owner just write it and send it without commands.\n\n"
-        "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
-        "/help - Displays this help message\n\n"
-        "For any issues or questions, feel free to reach out!"
-    )
-    await update.message.reply_text(help_text)
+    await update.message.reply_text(f"Message sent to {len(user_ids)} users.")
 
-# Command handler for /start
+# Define handler for /start command
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    username = update.message.from_user.username
+
+    # Save user ID if it's not already in the list
+    user_ids = load_user_ids()
+    if user_id not in user_ids:
+        save_user_id(user_id)
+        logger.debug(f"Added {username} ({user_id}) to the user list.")
+
     start_text = (
         "Hello and welcome! 🫂\n\n"
         "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner.\n\n"
@@ -111,10 +95,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Add handlers for text, photos, and videos
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-app.add_handler(MessageHandler(filters.PHOTO, forward_photo))
-app.add_handler(MessageHandler(filters.VIDEO, forward_video))
-app.add_handler(CommandHandler("send", send_command))
-app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("all", all_command))
 app.add_handler(CommandHandler("start", start_command))
 
 # Start polling
