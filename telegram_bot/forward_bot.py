@@ -22,22 +22,40 @@ if not CHAT_ID:
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
-# Set the rate limit (e.g., 5 messages per 60 seconds)
+# Rate limit settings
 RATE_LIMIT = 5
 TIME_WINDOW = 60  # in seconds
+COOLDOWN_PERIODS = [60, 300, 900]  # 1 minute, 5 minutes, 15 minutes
 
-# Dictionary to keep track of user messages and timestamps
+# Dictionary to keep track of user messages, timestamps, and warnings
 user_message_log = {}
+user_warning_count = {}
+user_block_time = {}
 
-# Anti-spam check
+# List of spammy keywords
+SPAM_KEYWORDS = ['buy', 'free', 'winner', 'click', 'urgent', 'lottery', 'https://', 'www.']
+
+# Anti-spam: Check if user exceeds message limit
 def is_spamming(user_id):
     current_time = time.time()
 
-    # Initialize user message log if not present
+    # Block user permanently if warning count exceeds the threshold
+    if user_id in user_warning_count and user_warning_count[user_id] >= len(COOLDOWN_PERIODS):
+        return True  # User permanently blocked
+
+    # Initialize user logs if not already present
     if user_id not in user_message_log:
         user_message_log[user_id] = []
+    if user_id not in user_warning_count:
+        user_warning_count[user_id] = 0
+    if user_id not in user_block_time:
+        user_block_time[user_id] = 0
 
-    # Filter out messages outside the time window
+    # If the user is currently blocked, ignore their messages
+    if current_time < user_block_time[user_id]:
+        return True  # User is still in cooldown period
+
+    # Filter out old message timestamps outside the time window
     user_message_log[user_id] = [
         timestamp for timestamp in user_message_log[user_id]
         if current_time - timestamp < TIME_WINDOW
@@ -45,11 +63,26 @@ def is_spamming(user_id):
 
     # Check if the user exceeds the rate limit
     if len(user_message_log[user_id]) >= RATE_LIMIT:
+        user_warning_count[user_id] += 1
+
+        # Apply progressive blocking
+        if user_warning_count[user_id] < len(COOLDOWN_PERIODS):
+            block_duration = COOLDOWN_PERIODS[user_warning_count[user_id]]
+        else:
+            block_duration = COOLDOWN_PERIODS[-1]
+
+        # Block the user for a period
+        user_block_time[user_id] = current_time + block_duration
+        logger.warning(f"User {user_id} has been blocked for {block_duration} seconds due to spam.")
         return True
 
     # Log the current message timestamp
     user_message_log[user_id].append(current_time)
     return False
+
+# Anti-spam: Check for keywords in message
+def contains_spam_keywords(message_text):
+    return any(keyword.lower() in message_text.lower() for keyword in SPAM_KEYWORDS)
 
 # Define message handler for text messages
 async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -57,10 +90,16 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     username = update.message.from_user.username
 
-    # Check for spam
+    # Check if the message contains spam keywords
+    if contains_spam_keywords(user_message):
+        await update.message.reply_text("Your message contains spammy content and has been ignored.")
+        logger.warning(f"Message from {user_id} ({username}) ignored due to spam keywords.")
+        return
+
+    # Check for spam behavior (rate limit exceeded)
     if is_spamming(user_id):
         await update.message.reply_text(
-            "You're sending messages too quickly. Please wait a moment before sending more."
+            "You're sending messages too quickly or have violated the spam policy. Please wait before trying again."
         )
         logger.warning(f"User {user_id} ({username}) is spamming.")
         return
@@ -174,6 +213,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 app.add_handler(MessageHandler(filters.PHOTO, forward_photo))
 app.add_handler(MessageHandler(filters.VIDEO, forward_video))
+
+# Add command handlers
 app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CommandHandler("start", start_command))
