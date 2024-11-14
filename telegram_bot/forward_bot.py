@@ -37,7 +37,8 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send message with each piece of information on a new line
     message_to_owner = (
-        f"{user_message}\n"
+        f"```\n"
+        f"{user_message}```\n"
         f"User ID: {user_id}\n"
         f"Username: @{username}\n"
         f"Phone Number: {phone_number}\n"
