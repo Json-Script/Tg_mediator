@@ -4,7 +4,7 @@ import json
 import os
 
 # Path for the file to store user data
-USER_DATA_FILE = "user_data.json"
+USER_DATA_FILE = "Telegram_bot/user_data.json"
 
 # Function to load existing user data from the file or create an empty dictionary if it doesn't exist
 def load_user_data():
