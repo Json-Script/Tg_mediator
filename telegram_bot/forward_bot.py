@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime, timedelta
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
 
 # Set up logging for debugging
@@ -22,6 +22,27 @@ if not CHAT_ID:
 
 # Store message history for all users with timestamps
 user_message_history = {}
+unsent_messages = []
+
+# File paths for persistence
+HISTORY_FILE = 'message_history.json'
+UNSENT_FILE = 'unsent_messages.json'
+
+# Load persisted data if files exist
+if os.path.exists(HISTORY_FILE):
+    with open(HISTORY_FILE, 'r') as f:
+        user_message_history = json.load(f)
+
+if os.path.exists(UNSENT_FILE):
+    with open(UNSENT_FILE, 'r') as f:
+        unsent_messages = json.load(f)
+
+# Save data to file (history and unsent messages)
+def save_data():
+    with open(HISTORY_FILE, 'w') as f:
+        json.dump(user_message_history, f)
+    with open(UNSENT_FILE, 'w') as f:
+        json.dump(unsent_messages, f)
 
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
@@ -45,7 +66,17 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send message with username and ID of the sender
     await context.bot.send_message(chat_id=CHAT_ID, text=f"Message from {username} (ID: {user_id}): {user_message}")
-    await update.message.reply_text("Your message has been sent to the owner.")
+    
+    # Send the confirmation message to the user with buttons
+    reply_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Delete Message", callback_data=f"delete_{user_id}_{timestamp.isoformat()}"),
+         InlineKeyboardButton("Resend Message", callback_data=f"resend_{user_id}_{timestamp.isoformat()}")]
+    ])
+    await update.message.reply_text("Your message has been sent to the owner.", reply_markup=reply_markup)
+
+    # Save unsent messages for later
+    unsent_messages.append({"user_id": user_id, "message": user_message, "timestamp": timestamp.isoformat()})
+    save_data()
 
 # Command handler for /send
 async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -105,11 +136,47 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(help_text)
 
+# Callback handler for delete/resend actions
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    action_data = query.data
+    user_id, timestamp_str = action_data.split("_")[1:]
+
+    # Retrieve the message from the unsent messages list
+    timestamp = datetime.fromisoformat(timestamp_str)
+    user_message = next((msg["message"] for msg in unsent_messages if msg["user_id"] == int(user_id) and msg["timestamp"] == timestamp_str), None)
+
+    if action_data.startswith("delete"):
+        # Remove message
+        unsent_messages[:] = [msg for msg in unsent_messages if not (msg["user_id"] == int(user_id) and msg["timestamp"] == timestamp_str)]
+        save_data()
+        await query.answer("Message deleted successfully.")
+        await query.edit_message_text("Your message has been deleted.")
+    
+    elif action_data.startswith("resend"):
+        # Resend message to owner
+        await query.answer("Message resent to the owner.")
+        await query.edit_message_text(f"Message from {user_id}: {user_message}")
+        await app.bot.send_message(chat_id=CHAT_ID, text=f"Resent message from {user_id}: {user_message}")
+
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("history", history_command))
 app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CallbackQueryHandler(button_callback))
+
+# Notify that the bot is turned on
+async def notify_turn_on():
+    await app.bot.send_message(CHAT_ID, "Bot turned on...")
 
 # Start polling
-app.run_polling()
+app.run_polling(on_shutdown=notify_turn_on)
+
+# Notify that the bot is turned off
+def notify_turn_off():
+    app.bot.send_message(CHAT_ID, "Bot turned off...")
+
+# Set up shutdown handler (for bot shutdown notifications)
+import signal
+signal.signal(signal.SIGTERM, notify_turn_off)
