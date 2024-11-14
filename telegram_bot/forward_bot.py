@@ -32,16 +32,18 @@ async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.debug("Message from owner's chat ID. Skipping forwarding.")
         return
 
-    # Send message with username and ID of the sender
-    await context.bot.send_message(chat_id=CHAT_ID, text=f"{user_message} \n\n"
-"@{username} (ID: {user_id})")
+    # Send message with user's message first, then username and ID of the sender
+    await context.bot.send_message(
+        chat_id=CHAT_ID,
+        text=f"{user_message}\n\nFrom: {username} (ID: {user_id})"
+    )
     await update.message.reply_text("Your message has been sent to the owner.")
 
 # Command handler for /send
 async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only allow the command for the owner
     if update.message.from_user.id != CHAT_ID:
-        await update.message.reply_text("You "are not authorized to use this command.")
+        await update.message.reply_text("You are not authorized to use this command.")
         return
 
     # Parse command arguments
@@ -64,9 +66,8 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "Here’s how you can interact with the bot:\n\n"
-        "for sending your massage to the owner just write it and send it without commands. \n\n"
+        "For sending your message to the owner, just write it and send it without commands.\n\n"
         "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
-        "\n"
         "/help - Displays this help message\n\n"
         "For any issues or questions, feel free to reach out!"
     )
@@ -76,7 +77,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_text = (
         "Hello and welcome! 🫂\n\n"
-        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner. \n\n"
+        "I’m your forwarder bot. I am the intermediary between you and the senior manager. I will personally forward your messages to the owner.\n\n"
         "How can I assist you today? You can type /help to see the available commands."
     )
     await update.message.reply_text(start_text)
