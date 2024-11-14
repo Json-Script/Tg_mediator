@@ -62,17 +62,30 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Command handler for /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
-        "Welcome to the bot! Here are the available commands:\n\n"
-        "/help - Show this message\n"
-        "/send <number_id> <message> - Send a message to a specific user ID\n"
-        "\nFor more information, feel free to ask."
+        "Here’s how you can interact with the bot:\n\n"
+        "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
+        "  - **Who can use this?**: Only the owner (Chat ID: {CHAT_ID}) can use this command.\n"
+        "\n"
+        "/help - Displays this help message\n"
+        "  - **Who can use this?**: Anyone can use this command to learn about available commands.\n"
+        "\n"
+        "For any issues or questions, feel free to reach out!"
     )
     await update.message.reply_text(help_text)
+
+# Command handler for /start
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    start_text = (
+        "Hello and welcome! 👋\n\n"
+        "I’m your friendly bot. How can I assist you today? You can type /help to see the available commands."
+    )
+    await update.message.reply_text(start_text)
 
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("start", start_command))
 
 # Start polling
 app.run_polling()
