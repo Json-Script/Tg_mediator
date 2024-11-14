@@ -24,10 +24,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-telegram-bot==20.0  # Install the required dependencies directly
 
+      - name: Get Git commit hash
+        id: git_commit
+        run: echo "GIT_COMMIT_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
       - name: Run the Telegram Bot with restart every 50 minutes
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          GIT_COMMIT_HASH: ${{ env.GIT_COMMIT_HASH }}
         run: |
           while true; do
             echo "Starting Telegram bot..."
