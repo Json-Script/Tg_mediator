@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
@@ -21,11 +22,48 @@ if not CHAT_ID:
 # Create the bot application
 app = Application.builder().token(BOT_TOKEN).build()
 
+# Set the rate limit (e.g., 5 messages per 60 seconds)
+RATE_LIMIT = 5
+TIME_WINDOW = 60  # in seconds
+
+# Dictionary to keep track of user messages and timestamps
+user_message_log = {}
+
+# Anti-spam check
+def is_spamming(user_id):
+    current_time = time.time()
+
+    # Initialize user message log if not present
+    if user_id not in user_message_log:
+        user_message_log[user_id] = []
+
+    # Filter out messages outside the time window
+    user_message_log[user_id] = [
+        timestamp for timestamp in user_message_log[user_id]
+        if current_time - timestamp < TIME_WINDOW
+    ]
+
+    # Check if the user exceeds the rate limit
+    if len(user_message_log[user_id]) >= RATE_LIMIT:
+        return True
+
+    # Log the current message timestamp
+    user_message_log[user_id].append(current_time)
+    return False
+
 # Define message handler for text messages
 async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     user_id = update.message.from_user.id
     username = update.message.from_user.username
+
+    # Check for spam
+    if is_spamming(user_id):
+        await update.message.reply_text(
+            "You're sending messages too quickly. Please wait a moment before sending more."
+        )
+        logger.warning(f"User {user_id} ({username}) is spamming.")
+        return
 
     # Skip forwarding if the message is from the owner's chat ID
     if user_id == CHAT_ID:
