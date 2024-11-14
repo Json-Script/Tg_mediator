@@ -63,6 +63,7 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "Here’s how you can interact with the bot:\n\n"
+        "for sending your massage to the owner just write it and send it without commands. \n\n"
         "/send <number_id> <message> - Sends a message to a specific user ID (Owner Only)\n"
         "  - **Who can use this?**: Only the owner can use this command.\n"
         "\n"
