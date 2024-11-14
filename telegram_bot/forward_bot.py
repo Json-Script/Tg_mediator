@@ -1,143 +1,47 @@
-import os
-import logging
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import json
+import os
 
-# Set up logging for debugging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Path for the file to store user data
+USER_DATA_FILE = "user_data.json"
 
-# Get environment variables
-BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
-CHAT_ID = int(os.getenv('CHAT_ID'))  # Ensure CHAT_ID is an integer
+# Function to load existing user data from the file or create an empty dictionary if it doesn't exist
+def load_user_data():
+    if os.path.exists(USER_DATA_FILE):
+        with open(USER_DATA_FILE, "r") as file:
+            return json.load(file)
+    return {}
 
-# Log the environment variables for debugging
-logger.debug(f"Telegram Token: {BOT_TOKEN}")
-logger.debug(f"Chat ID (CHAT_ID): {CHAT_ID}")
+# Function to save user data to the file
+def save_user_data(user_data):
+    with open(USER_DATA_FILE, "w") as file:
+        json.dump(user_data, file, indent=4)
 
-if not CHAT_ID:
-    logger.error("Error: CHAT_ID is empty. Please set the CHAT_ID environment variable.")
+# Function to handle the /start command
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    username = update.effective_user.username or "Unknown"
 
-# Create the bot application
-app = Application.builder().token(BOT_TOKEN).build()
+    # Load existing user data, add the new user if not present, and save it
+    user_data = load_user_data()
+    if str(user_id) not in user_data:
+        user_data[str(user_id)] = username
+        save_user_data(user_data)
 
-# Define message handler for text messages
-async def forward_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
+    # Send a welcome message to the user (optional)
+    await update.message.reply_text("Welcome! You’ve started the bot.")
 
-    # Skip forwarding if the message is from the owner's chat ID
-    if user_id == CHAT_ID:
-        logger.debug("Message from owner's chat ID. Skipping forwarding.")
-        return
+# Main function to set up and run the bot
+def main():
+    # Initialize the bot application with the TELEGRAM_TOKEN from environment variables
+    application = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
-    # Send message with username and ID of the sender
-    await context.bot.send_message(
-        chat_id=CHAT_ID, 
-        text=f"Message from {username} (ID: {user_id}): {user_message}"
-    )
-    await update.message.reply_text(
-        "Thank you for your message. It has been successfully forwarded to the owner."
-    )
+    # Add command handler for /start
+    application.add_handler(CommandHandler("start", start))
 
-# Define handler for photos
-async def forward_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
+    # Run the bot
+    application.run_polling()
 
-    # Skip forwarding if the message is from the owner's chat ID
-    if user_id == CHAT_ID:
-        logger.debug("Message from owner's chat ID. Skipping forwarding.")
-        return
-
-    # Forward photo to the owner
-    photo = update.message.photo[-1]  # Get the highest quality photo
-    await context.bot.send_photo(
-        chat_id=CHAT_ID, 
-        photo=photo.file_id, 
-        caption=f"Photo from {username} (ID: {user_id})"
-    )
-    await update.message.reply_text(
-        "Your photo has been successfully sent to the owner. Thank you for sharing."
-    )
-
-# Define handler for videos
-async def forward_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
-
-    # Skip forwarding if the message is from the owner's chat ID
-    if user_id == CHAT_ID:
-        logger.debug("Message from owner's chat ID. Skipping forwarding.")
-        return
-
-    # Forward video to the owner
-    video = update.message.video
-    await context.bot.send_video(
-        chat_id=CHAT_ID, 
-        video=video.file_id, 
-        caption=f"Video from {username} (ID: {user_id})"
-    )
-    await update.message.reply_text(
-        "Your video has been successfully sent to the owner. Thank you for your submission."
-    )
-
-# Command handler for /send
-async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Only allow the command for the owner
-    if update.message.from_user.id != CHAT_ID:
-        await update.message.reply_text(
-            "I’m afraid you do not have permission to use this command. Please contact the owner for assistance."
-        )
-        return
-
-    # Parse command arguments
-    try:
-        target_id = context.args[0]
-        message = " ".join(context.args[1:])
-
-        # Ensure the target ID is an integer
-        target_id = int(target_id)
-
-        # Send the message to the specified target ID
-        await context.bot.send_message(chat_id=target_id, text=message)
-        await update.message.reply_text("Your message has been successfully sent.")
-    except (IndexError, ValueError):
-        await update.message.reply_text(
-            "It seems there was an issue with the format. Please use /send <number_id> <message>."
-        )
-    except Exception as e:
-        await update.message.reply_text(f"Something went wrong: {e}. Please try again later.")
-
-# Command handler for /help
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = (
-        "Hello! Here’s how you can interact with me:\n\n"
-        "• To send a message to the owner, simply write it and send it, no commands necessary.\n\n"
-        "• /send <number_id> <message> – Sends a message to a specific user (Owner Only)\n"
-        "• /help – Displays this helpful guide\n\n"
-        "If you have any questions, don’t hesitate to reach out. I’m here to assist you!"
-    )
-    await update.message.reply_text(help_text)
-
-# Command handler for /start
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    start_text = (
-        "Welcome! 🌟\n\n"
-        "I’m your assistant bot, here to relay your messages to the senior manager. "
-        "Feel free to send me a message, and I'll make sure it reaches the owner promptly.\n\n"
-        "If you're unsure about something, type /help to learn how to use the available features."
-    )
-    await update.message.reply_text(start_text)
-
-# Add handlers for text, photos, and videos
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-app.add_handler(MessageHandler(filters.PHOTO, forward_photo))
-app.add_handler(MessageHandler(filters.VIDEO, forward_video))
-app.add_handler(CommandHandler("send", send_command))
-app.add_handler(CommandHandler("help", help_command))
-app.add_handler(CommandHandler("start", start_command))
-
-# Start polling
-app.run_polling()
+if __name__ == "__main__":
+    main()
