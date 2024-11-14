@@ -59,9 +59,20 @@ async def send_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Failed to send message: {e}")
 
+# Command handler for /help
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = (
+        "Welcome to the bot! Here are the available commands:\n\n"
+        "/help - Show this message\n"
+        "/send <number_id> <message> - Send a message to a specific user ID\n"
+        "\nFor more information, feel free to ask."
+    )
+    await update.message.reply_text(help_text)
+
 # Add handlers
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 app.add_handler(CommandHandler("send", send_command))
+app.add_handler(CommandHandler("help", help_command))
 
 # Start polling
 app.run_polling()
