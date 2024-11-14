@@ -31,10 +31,10 @@ jobs:
         run: |
           while true; do
             echo "Starting Telegram bot..."
-            python telegram_bot/forward_bot.py &
+            nohup python telegram_bot/forward_bot.py &
             BOT_PID=$!
             sleep 3000  # Wait 50 minutes (3000 seconds)
             echo "Restarting Telegram bot..."
             kill $BOT_PID  # Terminate the current bot process
-            wait $BOT_PID  # Ensure the process finishes cleanly before restarting
+            sleep 5  # Brief sleep to ensure process termination
           done
