@@ -1,10 +1,13 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - main  # Automatically runs on push to main
-  workflow_dispatch:  # Allows manual run from GitHub Actions
+  schedule:
+    # Run at 00:00, 06:00, 12:00, and 18:00 UTC
+    - cron: "0 0 * * *"  # 00:00 to 06:00
+    - cron: "0 6 * * *"  # 06:00 to 12:00
+    - cron: "0 12 * * *" # 12:00 to 18:00
+    - cron: "0 18 * * *" # 18:00 to 24:00
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   deploy:
@@ -22,19 +25,16 @@ jobs:
       - name: Install Telegram bot dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install python-telegram-bot==20.0  # Install the required dependencies directly
+          pip install python-telegram-bot==20.0
 
-      - name: Run the Telegram Bot with restart every 50 minutes
+      - name: Run the Telegram Bot
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          while true; do
-            echo "Starting Telegram bot..."
-            nohup python telegram_bot/forward_bot.py &
-            BOT_PID=$!
-            sleep 3000  # Wait 50 minutes (3000 seconds)
-            echo "Restarting Telegram bot..."
-            kill $BOT_PID  # Terminate the current bot process
-            sleep 5  # Brief sleep to ensure process termination
-          done
+          echo "Starting Telegram bot for this time window..."
+          nohup python telegram_bot/forward_bot.py &
+          BOT_PID=$!
+          sleep 21600  # Run for 6 hours (21600 seconds)
+          echo "Time window completed, stopping bot..."
+          kill $BOT_PID  # Stop the bot process
