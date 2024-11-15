@@ -1,9 +1,13 @@
-name: Deploy
+name: Deploy Telegram Bot
 
 on:
   schedule:
-    - cron: "0 0,6,12,18 * * *"
-  workflow_dispatch:
+    # Run at 00:00, 06:00, 12:00, and 18:00 UTC
+    - cron: "0 0 * * *"  # 00:00 to 06:00
+    - cron: "0 6 * * *"  # 06:00 to 12:00
+    - cron: "0 12 * * *" # 12:00 to 18:00
+    - cron: "0 18 * * *" # 18:00 to 24:00
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   deploy:
@@ -28,17 +32,9 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          echo "Starting Telegram bot..."
-          nohup python Telegram_bot/forward_bot.py &
+          echo "Starting Telegram bot for this time window..."
+          nohup python telegram_bot/forward_bot.py &
           BOT_PID=$!
-          sleep 21600
-          kill $BOT_PID
-
-      - name: Commit and Push Updated User IDs
-        if: success()
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          git add Telegram_bot/user_ids.json
-          git commit -m "Update user IDs"
-          git push
+          sleep 21600  # Run for 6 hours (21600 seconds)
+          echo "Time window completed, stopping bot..."
+          kill $BOT_PID  # Stop the bot process
